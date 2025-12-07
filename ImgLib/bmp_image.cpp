@@ -8,13 +8,16 @@ using namespace std;
 
 namespace img_lib {
 
+constexpr int BYTE_PER_PIX = 3;
+constexpr int ALING_4 = 4;
+
 // функция вычисления отступа по ширине
 static int GetBMPStride(int w) {
-    return 4 * ((w * 3 + 3) / 4);
+    return ALING_4 * ((w * BYTE_PER_PIX + BYTE_PER_PIX) / ALING_4);
 }
 
 static int GetBMPPadding(int w) {
-    return GetBMPStride(w) - w*3;
+    return GetBMPStride(w) - w*BYTE_PER_PIX;
 }
 
 
@@ -62,12 +65,19 @@ Image LoadBMP(const Path& file) {
 
     BitmapFileHeader file_hdr;
     in.read(reinterpret_cast<char*>(&file_hdr), sizeof(BitmapFileHeader));
+    if (!in) {
+        return {};
+    }
+
     if (file_hdr.signature[0] != 'B' || file_hdr.signature[1] != 'M') {
         return {};
     }
     
     BitmapInfoHeader info_hdr;
     in.read(reinterpret_cast<char*>(&info_hdr), sizeof(BitmapInfoHeader));
+    if (!in) {
+        return {};
+    }
 
     int height = info_hdr.height;
     int width = info_hdr.width;
@@ -75,17 +85,20 @@ Image LoadBMP(const Path& file) {
     Image image(width, height, Color::Black());
 
     int stride = GetBMPStride(width);
+    std::vector<byte> byte_buff (stride, 0);
+
     for (int y = height - 1; y >= 0; --y) {
-        for (int x = 0; x < width; ++x) {
+        in.read(byte_buff.data(), stride);
+        if (!in) {
+            return {};
+        }
+        for (int x = 0; x < BYTE_PER_PIX*width; ) {
             auto& pix = image.GetPixel(x,y);
-            pix.b = static_cast<byte>(in.get());
-            pix.g = static_cast<byte>(in.get());
-            pix.r = static_cast<byte>(in.get());
+            pix.b = (byte_buff[x++]);
+            pix.g = (byte_buff[x++]);
+            pix.r = (byte_buff[x++]);
         }
-        for(int x = 0; x < GetBMPPadding(width); ++x) {
-            char dummy;
-            in.get(dummy);
-        }
+    
     }
     return image;
 }
