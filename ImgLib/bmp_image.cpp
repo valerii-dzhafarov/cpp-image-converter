@@ -81,22 +81,23 @@ Image LoadBMP(const Path& file) {
 
     int height = info_hdr.height;
     int width = info_hdr.width;
-    
+
     Image image(width, height, Color::Black());
 
     int stride = GetBMPStride(width);
-    std::vector<byte> byte_buff (stride, 0);
+    std::vector<byte> byte_buff (stride);
 
     for (int y = height - 1; y >= 0; --y) {
-        in.read(byte_buff.data(), stride);
+        in.read((char*)byte_buff.data(), stride);
         if (!in) {
             return {};
         }
-        for (int x = 0; x < BYTE_PER_PIX*width; ) {
-            auto& pix = image.GetPixel(x,y);
-            pix.b = (byte_buff[x++]);
-            pix.g = (byte_buff[x++]);
-            pix.r = (byte_buff[x++]);
+        for (int x = 0; x < width; ++x) {
+            int byte_idx = x * BYTE_PER_PIX;
+            auto& pix = image.GetPixel(x, y);
+            pix.b = byte_buff[byte_idx + 0];
+            pix.g = byte_buff[byte_idx + 1];
+            pix.r = byte_buff[byte_idx + 2];
         }
     
     }
